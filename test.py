@@ -8,7 +8,7 @@ import importlib
 import agent
 
 
-# Environment update with fake values — must be set before modules are imported
+# Environment update with fake values — must be set before modules are imported...s
 
 os.environ.update({
     "AZURE_OPENAI_API_KEY": "test-key",
