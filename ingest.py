@@ -5,19 +5,28 @@ from pathlib import Path
 import chromadb
 import tiktoken
 from dotenv import load_dotenv
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 
 load_dotenv()
 
 
+LLM_PROFILE = os.getenv("LLM_PROFILE", "cloud")
 
-EMBEDDING_MODEL = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")
-
-client = AzureOpenAI(
-    api_key=os.environ["AZURE_OPENAI_API_KEY"],
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", "https://cds-ds-openai-001-x.openai.azure.com/"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
-)
+if LLM_PROFILE == "local":
+    client = OpenAI(
+        base_url=os.getenv("LOCAL_BASE_URL", "http://localhost:11434/v1"),
+        api_key="ollama",
+    )
+    EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "nomic-embed-text")
+    COLLECTION_NAME = os.getenv("LOCAL_COLLECTION", "Corpus_local")
+else:
+    client = AzureOpenAI(
+        api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", "https://cds-ds-openai-001-x.openai.azure.com/"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
+    )
+    EMBEDDING_MODEL = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")
+    COLLECTION_NAME = os.environ["COLLECTION"]
 
 enc = tiktoken.get_encoding("cl100k_base")
 
@@ -82,7 +91,7 @@ def main():
 
     print(f"Storing in ChromaDB at {os.environ['CHROMA_DIR']}...")
     db = chromadb.PersistentClient(path=os.environ["CHROMA_DIR"])
-    col = db.get_or_create_collection(os.environ["COLLECTION"], metadata={"hnsw:space": "cosine"})
+    col = db.get_or_create_collection(COLLECTION_NAME, metadata={"hnsw:space": "cosine"})
     col.upsert(ids=all_ids, embeddings=embeddings, documents=all_chunks, metadatas=all_meta)
 
     print(f"Done. Collection has {col.count()} chunk(s) total.")
